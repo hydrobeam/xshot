@@ -41,7 +41,13 @@ macro_rules! atom {
     };
 }
 
-atoms!(_net_client_list, utf8_string, _net_wm_name,);
+atoms!(
+    _net_client_list,
+    utf8_string,
+    _net_wm_name,
+    clipboard,
+    targets,
+);
 /// self.atoms.net_client_list()
 
 pub struct XInterface<'a> {
@@ -62,7 +68,7 @@ impl<'a> XInterface<'a> {
         Self {
             connection: &connection,
             screen,
-            atoms: Atoms::new(&connection),
+            atoms: Atoms::new(connection),
         }
     }
 
@@ -112,32 +118,6 @@ impl<'a> XInterface<'a> {
 
     /// Search for a window class which contains `name`.
     fn find_window_class(&self, name: &str) -> Result<x::Window> {
-        let wm_client_list = self.connection.send_request(&x::InternAtom {
-            only_if_exists: true,
-            name: b"_NET_CLIENT_LIST",
-        });
-
-        let tree = self
-            .connection
-            .wait_for_reply(self.connection.send_request(&x::QueryTree {
-                window: self.screen,
-            }))?;
-
-        let wm_client_list = self.connection.wait_for_reply(wm_client_list)?.atom();
-
-        let net_wm_name = self
-            .connection
-            .wait_for_reply(self.connection.send_request(&x::InternAtom {
-                only_if_exists: false,
-                name: b"_NET_WM_NAME",
-            }))?
-            .atom();
-        let utf8_string = self.connection.send_request(&x::InternAtom {
-            only_if_exists: true,
-            name: b"UTF8_STRING",
-        });
-        let utf8_string = self.connection.wait_for_reply(utf8_string)?.atom();
-
         let client_list = self.connection.send_request(&x::GetProperty {
             delete: false,
             window: self.screen,
@@ -153,14 +133,14 @@ impl<'a> XInterface<'a> {
                 delete: false,
                 window: *client,
                 property: self.atoms._net_wm_name(),
-                r#type: utf8_string,
+                r#type: self.atoms.utf8_string(),
                 long_offset: 0,
                 long_length: 1024,
             });
             let reply = self.connection.wait_for_reply(cookie)?;
             let title = reply.value();
             let title = std::str::from_utf8(title).expect("invalid utf8");
-            dbg!(title);
+            // dbg!(title);
             if title.to_lowercase().contains(&name.to_lowercase()) {
                 return Ok(*client);
             }
@@ -203,35 +183,24 @@ impl XInterface<'_> {
             value_list: &[],
         })?;
 
-        let selection = self.connection.send_request(&x::InternAtom {
-            only_if_exists: false,
-            name: b"CLIPBOARD",
-        });
-        let selection = self.connection.wait_for_reply(selection)?.atom();
-
-        let utf8_string = self.connection.send_request(&x::InternAtom {
-            only_if_exists: true,
-            name: format.to_mime_type(),
-        });
-        let image_format = self.connection.wait_for_reply(utf8_string)?.atom();
-        // let utf8_string = x::ATOM_STRING;
-
-        let targets = self.connection.send_request(&x::InternAtom {
-            only_if_exists: true,
-            name: b"TARGETS",
-        });
-        let targets = self.connection.wait_for_reply(targets)?.atom();
+        let image_format = self
+            .connection
+            .wait_for_reply(self.connection.send_request(&x::InternAtom {
+                only_if_exists: true,
+                name: format.to_mime_type(),
+            }))?
+            .atom();
 
         self.connection
             .send_and_check_request(&x::SetSelectionOwner {
                 owner: window,
-                selection,
+                selection: self.atoms.clipboard(),
                 time: x::CURRENT_TIME,
             })?;
 
-        let got_select = self
-            .connection
-            .send_request(&x::GetSelectionOwner { selection });
+        let got_select = self.connection.send_request(&x::GetSelectionOwner {
+            selection: self.atoms.clipboard(),
+        });
         if self.connection.wait_for_reply(got_select)?.owner() != window {
             panic!("unable to establish window as clipboard owner")
         }
@@ -239,7 +208,7 @@ impl XInterface<'_> {
         loop {
             let event = self.connection.wait_for_event()?;
             let mut escape = false;
-            // dbg!(&event);
+
             match event {
                 xcb::Event::X(event) => match event {
                     x::Event::SelectionClear(_) => {
@@ -264,7 +233,7 @@ impl XInterface<'_> {
                             self.connection
                                 .send_and_check_request(&x::DestroyWindow { window })?;
                             escape = true;
-                        } else if event.target() == targets {
+                        } else if event.target() == self.atoms.targets() {
                             self.connection.send_request(&x::ChangeProperty {
                                 mode: x::PropMode::Replace,
                                 window: event.requestor(),
