@@ -1,11 +1,18 @@
 [package]
-name = "xcb-rs"
+name = "xsshot"
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+rust-version = "1.70"
+repository = "https://github.com/hydrobeam/org-rust"
+LICENSE="MIT"
+keywords = ["screenshot", "screen-shot", "X", "X11"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap = { version = "4.3.12", features = ["derive"] }
 image = "0.24.6"
-xcb = {git="https://github.com/rust-x-bindings/rust-xcb.git"}
+# ATM the latest version has a memory alignment issue (#230), use latest commit from main
+xcb = { git = "https://github.com/rust-x-bindings/rust-xcb.git", rev = "5657d69" }

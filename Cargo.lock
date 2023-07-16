@@ -821,7 +821,7 @@ checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
 [[package]]
 name = "xcb"
 version = "1.2.1"
-source = "git+https://github.com/rust-x-bindings/rust-xcb.git#5657d694e72c9c69049b5452d9a248ddd949f246"
+source = "git+https://github.com/rust-x-bindings/rust-xcb.git?rev=5657d69#5657d694e72c9c69049b5452d9a248ddd949f246"
 dependencies = [
  "bitflags 1.3.2",
  "libc",
@@ -829,7 +829,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "xcb-rs"
+name = "xsshot"
 version = "0.1.0"
 dependencies = [
  "clap",
