@@ -17,6 +17,8 @@ fn main() -> xcb::Result<()> {
         Some(WindowTarget::Name(i))
     } else if let Some(i) = &cli.class {
         Some(WindowTarget::Class(i))
+    } else if let Some(i) = &cli.wid {
+        Some(WindowTarget::Wid(i))
     } else {
         None
     };

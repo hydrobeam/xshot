@@ -14,7 +14,7 @@ pub struct Cli {
     /// https://specifications.freedesktop.org/wm-spec/1.3/ar01s05.html
     ///
     /// Matching is fuzzy, a screenshot will be taken of the first match.
-    #[arg(short, long, conflicts_with = "class")]
+    #[arg(short, long, conflicts_with_all = ["class", "wid"])]
     pub name: Option<String>,
 
     /// The window class to target. Incomptabile with `name`.
@@ -24,8 +24,14 @@ pub struct Cli {
     /// https://tronche.com/gui/x/icccm/sec-4.html#WM_CLASS
     ///
     /// Matching is fuzzy, a screenshot will be taken of the first match.
-    #[arg(short, long, conflicts_with = "name")]
+    #[arg(short, long, conflicts_with_all=["wid", "name"])]
     pub class: Option<String>,
+
+    /// The specific XID of a window to target.
+    ///
+    /// Can use a tool like `xwininfo` to find the ID of a particular window.
+    #[arg(long, conflicts_with_all=["class", "name"])]
+    pub wid: Option<String>,
 
     /// The topleft corner of the screenshot
     #[arg(short, long, num_args(2), default_values=["0", "0"])]
@@ -38,8 +44,12 @@ pub struct Cli {
     pub size: Option<Vec<u16>>,
 
     /// The image format for the screenshot
-    #[arg(short, long, value_enum, default_value = "png")]
+    #[arg(short, long, value_enum, default_value = "jpeg")]
     pub format: OutputFormat,
+
+    /// How long to wait before capturing the screenshot
+    #[arg(short, long)]
+    pub delay: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

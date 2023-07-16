@@ -172,6 +172,13 @@ impl<'a> XInterface<'a> {
             WindowTarget::Name(n) => (self.atoms._net_wm_name(), self.atoms.utf8_string(), n),
             // blank strings unless ATOM_STRING is used for the type
             WindowTarget::Class(n) => (x::ATOM_WM_CLASS, x::ATOM_STRING, n),
+            WindowTarget::Wid(n) => {
+                let res_id =
+                    u32::from_str_radix(n.trim_start_matches("0x"), 16).expect("invalid window id");
+                // SAFETY: there's no other way to get a window object,
+                // so we need to trust the user and assume they're giving us a proper wid.
+                return Ok(unsafe { std::mem::transmute::<u32, x::Window>(res_id) });
+            }
         };
         for client in list.value() {
             let reply = self.request(&x::GetProperty {
