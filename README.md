@@ -2,11 +2,15 @@
 
 The XS screenshot tool for X11!
 
-Grabs screenshots of specific windows (or your whole screen) in the format of your choice and writes them to your clipboard or stdout. That's all.
+Grabs screenshots of specific windows (or your whole screen) in the format of your choice and writes them to your clipboard or `stdout`. That's all.
 
 ## Install
 
-TODO
+`xsshot` is available on [`crates.io`](https://example.com)
+
+```
+cargo install xsshot
+```
 
 ## Usage
 
@@ -28,7 +32,7 @@ xsshot -n emacs -f jpeg
 xsshot -f bmp -c firefox > "firefox.bmp"
 ```
 
-### Output of `xsshot -h`
+#### Output of `xsshot -h`
 
 ```man
 The XS screenshot tool for X
@@ -47,13 +51,13 @@ Options:
 
 ## Dependencies
 
-- clap: easy way to setup an excellent CLI
-- xcb: bindings to `xcb`, required for reading screen/window data + writing to clipboard
-- image: converting image data to convenient formats
+- `clap`: easy way to setup an excellent CLI
+- `xcb`: bindings to `xcb`, required for reading screen/window data + writing to clipboard
+- `image`: converting image data to convenient formats
 
 ## Name
 
 Take your pick:
 
-- Extra Small {XS} (S)creen(SHOT) => `xsshot`
-- (XS)erver(SHOT) => `xsshot`
+- Extra Small {XS} Screen(SHOT) => `xsshot`
+- (XS)erver Screen(SHOT) => `xsshot`
