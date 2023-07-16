@@ -5,7 +5,7 @@ edition = "2021"
 readme = "README.md"
 rust-version = "1.70"
 repository = "https://github.com/hydrobeam/org-rust"
-LICENSE="MIT"
+license = "MIT"
 keywords = ["screenshot", "screen-shot", "X", "X11"]
 categories = ["command-line-utilities"]
 
@@ -16,3 +16,9 @@ clap = { version = "4.3.12", features = ["derive"] }
 image = "0.24.6"
 # ATM the latest version has a memory alignment issue (#230), use latest commit from main
 xcb = { git = "https://github.com/rust-x-bindings/rust-xcb.git", rev = "5657d69" }
+
+[build-dependencies]
+clap = { version = "4.3.12", features=["derive"]}
+clap_complete = "4.3.2"
+# janky
+image = "0.24.6"

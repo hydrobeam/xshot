@@ -42,7 +42,8 @@ macro_rules! atom {
             *self.$name.get_or_init(|| {
                 let atom_cookie = self.connection.send_request(&x::InternAtom {
                     only_if_exists: false,
-                    name: stringify!($name).to_uppercase().as_bytes(),
+                    // all names are pure ascii, this is fine
+                    name: stringify!($name).to_ascii_uppercase().as_bytes(),
                 });
 
                 self.connection
@@ -63,7 +64,7 @@ atoms!(
 );
 
 /// Struct that executes all X-related operations
-pub struct XInterface<'a> {
+pub(crate) struct XInterface<'a> {
     /// The connection to x11
     connection: &'a xcb::Connection,
     /// Current screen
@@ -200,7 +201,7 @@ impl<'a> XInterface<'a> {
         panic!("unable to find window class")
     }
 
-    /// Gets the dimensions of the window to be screenshotted
+    /// Gets the dimensions of the window to be screenshotted.
     fn calc_geometry(&self, wid: x::Window) -> Result<[u16; 2]> {
         let window_geom = self.connection.send_request(&x::GetGeometry {
             drawable: x::Drawable::Window(wid),
@@ -212,16 +213,17 @@ impl<'a> XInterface<'a> {
     }
 }
 
-/// Query the x-server to get iamge data.
-///
-/// Depending on whether window_name/size are not None, we also query for
-/// - additional windows matching the passed name
-/// - size of the window to be screenshotted
-
 impl XInterface<'_> {
+    /// Query the x-server to get image data.
+    ///
+    /// Depending on whether window_name/size are not None, we also query for
+    /// - additional windows matching the passed name
+    /// - size of the window to be screenshotted
     pub fn write_to_clipboard(&self, img_buf: &[u8], format: OutputFormat) -> Result<()> {
         let window = self.connection.generate_id();
         self.connection.send_and_check_request(&x::CreateWindow {
+            // stolen directly from xcolor:
+            // https://github.com/Soft/xcolor/blob/969d6525c4568a2fafd321fcd72a95481c5f3c7b/src/selection.rs#L88-L101
             depth: x::COPY_FROM_PARENT as u8,
             wid: window,
             parent: self.screen,
@@ -235,6 +237,7 @@ impl XInterface<'_> {
             value_list: &[],
         })?;
 
+        // setup an atom for the mime type
         let image_format = self
             .request(&x::InternAtom {
                 only_if_exists: true,
