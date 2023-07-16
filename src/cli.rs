@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use clap::{Parser, ValueEnum};
 use image::ImageOutputFormat;
 

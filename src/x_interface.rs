@@ -48,7 +48,6 @@ atoms!(
     clipboard,
     targets,
 );
-/// self.atoms.net_client_list()
 
 pub struct XInterface<'a> {
     connection: &'a xcb::Connection,
@@ -61,12 +60,12 @@ impl<'a> XInterface<'a> {
         let setup: &x::Setup = connection.get_setup();
         let screen = setup
             .roots()
-            .nth(screen_num as usize)
+            .nth(screen_num)
             .expect("invalid x display")
             .root();
 
         Self {
-            connection: &connection,
+            connection,
             screen,
             atoms: Atoms::new(connection),
         }

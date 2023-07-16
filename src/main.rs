@@ -5,12 +5,13 @@ use std::io::{stdout, Cursor, IsTerminal, Write};
 
 use clap::Parser;
 use image::RgbaImage;
+use x_interface::XInterface;
 
 fn main() -> xcb::Result<()> {
     let cli = cli::Cli::parse();
 
     let (conn, screen_num) = xcb::Connection::connect(None)?;
-    let x_handle = x_interface::XInterface::new(&conn, screen_num as usize);
+    let x_handle = XInterface::new(&conn, screen_num as usize);
 
     let ret_img: RgbaImage =
         x_handle.establish_image(cli.window.as_deref(), cli.position, cli.size)?;
@@ -27,7 +28,7 @@ fn main() -> xcb::Result<()> {
             .expect("failed writing to clipboard");
     } else {
         io_out
-            .write(&cursor.into_inner())
+            .write_all(&cursor.into_inner())
             .expect("failed writing to stdout");
     }
     Ok(())
