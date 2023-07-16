@@ -17,7 +17,7 @@ pub struct Cli {
     #[arg(short, long, conflicts_with_all = ["class", "wid"])]
     pub name: Option<String>,
 
-    /// The window class to target. Incomptabile with `name`.
+    /// The window class to target.
     ///
     /// Queries the WM_CLASS property (i.e. the overall class of application: "Emacs", "Firefox", ...):
     ///
