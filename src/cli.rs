@@ -7,14 +7,29 @@ use image::ImageOutputFormat;
 #[command(about = "Basic screenshot tool for X")]
 #[command(author, version, about, long_about=None)]
 pub struct Cli {
-    /// Which window to take a screenshot of
+    /// The window name to target.
     ///
     /// Defaults to the full screen.
     ///
-    /// A subset of the full window class can be provided, a screenshot will be taken
-    /// of the first match.
-    #[arg(short, long)]
-    pub window: Option<String>,
+    /// Queries the _NET_WM_NAME property (i.e. the full display name of the window):
+    /// https://specifications.freedesktop.org/wm-spec/1.3/ar01s05.html
+    ///
+    /// Matching is fuzzy, a screenshot will be taken of the first match.
+    ///
+    /// Queries the
+    #[arg(short, long, conflicts_with = "class")]
+    pub name: Option<String>,
+
+    /// The window class to target. Incomptabile with `name`.
+    ///
+    /// Defaults to the full screen.
+    ///
+    /// Queries the WM_CLASS property (i.e. the overall class of application: "Emacs", "Firefox", ...):
+    /// https://tronche.com/gui/x/icccm/sec-4.html#WM_CLASS
+    ///
+    /// Matching is fuzzy, a screenshot will be taken of the first match.
+    #[arg(short, long, conflicts_with = "name")]
+    pub class: Option<String>,
 
     /// Where the topleft corner of the screenshot is located.
     ///

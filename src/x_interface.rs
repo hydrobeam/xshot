@@ -3,6 +3,8 @@ use std::cell::OnceCell;
 use image::RgbaImage;
 use xcb::{x, Result};
 
+use crate::WindowTarget;
+
 use crate::cli::OutputFormat;
 
 macro_rules! atoms {
@@ -116,7 +118,9 @@ impl<'a> XInterface<'a> {
     }
 
     /// Search for a window class which contains `name`.
-    fn find_window_class(&self, name: &str) -> Result<x::Window> {
+    fn find_window_class(&self, name: WindowTarget) -> Result<x::Window> {
+        // returns all top level clients:
+        // https://specifications.freedesktop.org/wm-spec/1.3/ar01s03.html
         let client_list = self.connection.send_request(&x::GetProperty {
             delete: false,
             window: self.screen,
@@ -127,27 +131,43 @@ impl<'a> XInterface<'a> {
         });
         let list = self.connection.wait_for_reply(client_list)?;
 
+        let (property, r#type, name) = match name {
+            // use _NET_WM_NAME and not WM_NAME because WM_NAME just.. doesn't work?
+            // it returns all blank strings.
+            WindowTarget::Name(n) => (self.atoms._net_wm_name(), self.atoms.utf8_string(), n),
+            // blank strings unless ATOM_STRING is used for the type
+            WindowTarget::Class(n) => (x::ATOM_WM_CLASS, x::ATOM_STRING, n),
+        };
         for client in list.value() {
             let cookie = self.connection.send_request(&x::GetProperty {
                 delete: false,
                 window: *client,
-                property: self.atoms._net_wm_name(),
-                r#type: self.atoms.utf8_string(),
+                property,
+                r#type,
                 long_offset: 0,
                 long_length: 1024,
             });
             let reply = self.connection.wait_for_reply(cookie)?;
             let title = reply.value();
-            let title = std::str::from_utf8(title).expect("invalid utf8");
-            // dbg!(title);
+            let title = std::str::from_utf8(title).expect("invalid utf8 title");
+            // Name search will always unwrap_or to get the original title
+
+            // Class search is in the format: `\0FIRST\0SECOND\0`, SECOND has the contents we want
+            // so we try to extract that.
+            // https://tronche.com/gui/x/icccm/sec-4.html#WM_CLASS
+            let title = title.split('\0').nth(1).unwrap_or(title);
+
             if title.to_lowercase().contains(&name.to_lowercase()) {
+                eprintln!("matched against: {}", title);
                 return Ok(*client);
             }
         }
 
-        panic!("not able to find window class")
+        // TODO: proper erroring without panicking
+        panic!("unable to find window class")
     }
 
+    /// Gets the dimensions of the window to be screenshotted
     fn calc_geometry(&self, wid: x::Window) -> Result<[u16; 2]> {
         let window_geom = self.connection.send_request(&x::GetGeometry {
             drawable: x::Drawable::Window(wid),

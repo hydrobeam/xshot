@@ -1,5 +1,6 @@
 mod cli;
 mod x_interface;
+mod types;
 
 use std::io::{stdout, Cursor, IsTerminal, Write};
 
@@ -7,14 +8,26 @@ use clap::Parser;
 use image::RgbaImage;
 use x_interface::XInterface;
 
+use types::WindowTarget;
+
+
+
 fn main() -> xcb::Result<()> {
     let cli = cli::Cli::parse();
+
+    let window_query = if let Some(i) = &cli.name {
+        Some(WindowTarget::Name(i))
+    } else if let Some(i) = &cli.class {
+        Some(WindowTarget::Class(i))
+    } else {
+        None
+    };
 
     let (conn, screen_num) = xcb::Connection::connect(None)?;
     let x_handle = XInterface::new(&conn, screen_num as usize);
 
     let ret_img: RgbaImage =
-        x_handle.establish_image(cli.window.as_deref(), cli.position, cli.size)?;
+        x_handle.establish_image(window_query, cli.position, cli.size)?;
 
     let mut cursor = Cursor::new(Vec::new());
     ret_img.write_to(&mut cursor, cli.format).unwrap();
