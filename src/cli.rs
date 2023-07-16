@@ -69,6 +69,9 @@ impl From<OutputFormat> for ImageOutputFormat {
 }
 
 impl OutputFormat {
+    /// Convert formats to mime types for writing to clipboard
+    // NOTE: found out that mime types work from reading:
+    // https://github.com/edrosten/x_clipboard/blob/master/selection.cc#L287-L289
     pub fn to_mime_type(self) -> &'static [u8] {
         match self {
             OutputFormat::Png => b"image/png",

@@ -7,8 +7,17 @@ use crate::WindowTarget;
 
 use crate::cli::OutputFormat;
 
+// Macros:
 macro_rules! atoms {
     ($($item: ident,)*) => {
+        /// Custom Lazily Implemented atoms
+        ///
+        /// Each individual atom is wrapped in a OnceCell that is initialized when it is used.
+        /// (see the atom! macro)
+        ///
+        /// This avoids initializing every atom all at once when we setuo the connection,
+        /// they are only established when they are first used.
+        ///
         struct Atoms<'a> {
             connection: &'a xcb::Connection,
             $($item: OnceCell<x::Atom>,)*
@@ -31,12 +40,14 @@ macro_rules! atom {
     ($name: ident) => {
         fn $name(&self) -> x::Atom {
             *self.$name.get_or_init(|| {
+                let atom_cookie = self.connection.send_request(&x::InternAtom {
+                    only_if_exists: false,
+                    name: stringify!($name).to_uppercase().as_bytes(),
+                });
+
                 self.connection
-                    .wait_for_reply(self.connection.send_request(&x::InternAtom {
-                        only_if_exists: false,
-                        name: stringify!($name).to_uppercase().as_bytes(),
-                    }))
-                    .unwrap()
+                    .wait_for_reply(atom_cookie)
+                    .expect("unable to establish atom")
                     .atom()
             })
         }
@@ -51,9 +62,22 @@ atoms!(
     targets,
 );
 
+/// Struct that executes all X-related operations
 pub struct XInterface<'a> {
+    /// The connection to x11
     connection: &'a xcb::Connection,
+    /// Current screen
     screen: x::Window,
+    /// Custom lazily-defined atoms
+    ///
+    /// # Example
+    ///
+    /// ```text
+    /// // self.atoms.uft8_string is not defined here
+    ///
+    /// let atom = self.atoms.utf8_string(); // it is now defined
+    /// self.atoms.uft8_string() // already defined, is not re-computed
+    /// ```
     atoms: Atoms<'a>,
 }
 
@@ -73,9 +97,21 @@ impl<'a> XInterface<'a> {
         }
     }
 
+    /// Wrapper around send_request + wait_for_reply to make it less verbose.
+    pub fn request<R, C>(&self, r: &R) -> Result<C::Reply>
+    where
+        R: xcb::Request<Cookie = C>,
+        C: xcb::CookieWithReplyChecked,
+    {
+        let cookie = self.connection.send_request(r);
+        self.connection.wait_for_reply(cookie)
+    }
+}
+
+impl<'a> XInterface<'a> {
     pub fn establish_image(
         &self,
-        window_name: Option<&str>,
+        window_name: Option<WindowTarget>,
         position: Vec<i16>,
         size: Option<Vec<u16>>,
     ) -> Result<RgbaImage> {
@@ -91,7 +127,7 @@ impl<'a> XInterface<'a> {
             self.calc_geometry(wid)?
         };
 
-        let window_image = self.connection.send_request(&xcb::x::GetImage {
+        let window_image = self.request(&xcb::x::GetImage {
             format: x::ImageFormat::ZPixmap,
             drawable: x::Drawable::Window(wid),
             x: position[0],
@@ -99,9 +135,8 @@ impl<'a> XInterface<'a> {
             width: size[0],
             height: size[1],
             plane_mask: std::u32::MAX,
-        });
+        })?;
 
-        let window_image = self.connection.wait_for_reply(window_image)?;
         let img_data = window_image.data();
         let mut pixels = Vec::with_capacity(img_data.len());
         // convert data from BGRx to RGBA
@@ -121,15 +156,14 @@ impl<'a> XInterface<'a> {
     fn find_window_class(&self, name: WindowTarget) -> Result<x::Window> {
         // returns all top level clients:
         // https://specifications.freedesktop.org/wm-spec/1.3/ar01s03.html
-        let client_list = self.connection.send_request(&x::GetProperty {
+        let list = self.request(&x::GetProperty {
             delete: false,
             window: self.screen,
             property: self.atoms._net_client_list(),
             r#type: x::ATOM_NONE,
             long_offset: 0,
             long_length: 1024,
-        });
-        let list = self.connection.wait_for_reply(client_list)?;
+        })?;
 
         let (property, r#type, name) = match name {
             // use _NET_WM_NAME and not WM_NAME because WM_NAME just.. doesn't work?
@@ -139,15 +173,14 @@ impl<'a> XInterface<'a> {
             WindowTarget::Class(n) => (x::ATOM_WM_CLASS, x::ATOM_STRING, n),
         };
         for client in list.value() {
-            let cookie = self.connection.send_request(&x::GetProperty {
+            let reply = self.request(&x::GetProperty {
                 delete: false,
                 window: *client,
                 property,
                 r#type,
                 long_offset: 0,
                 long_length: 1024,
-            });
-            let reply = self.connection.wait_for_reply(cookie)?;
+            })?;
             let title = reply.value();
             let title = std::str::from_utf8(title).expect("invalid utf8 title");
             // Name search will always unwrap_or to get the original title
@@ -203,12 +236,14 @@ impl XInterface<'_> {
         })?;
 
         let image_format = self
-            .connection
-            .wait_for_reply(self.connection.send_request(&x::InternAtom {
+            .request(&x::InternAtom {
                 only_if_exists: true,
                 name: format.to_mime_type(),
-            }))?
+            })?
             .atom();
+
+        // the overall process for writing to clipboard is described here:
+        // https://tronche.com/gui/x/icccm/sec-2.html
 
         self.connection
             .send_and_check_request(&x::SetSelectionOwner {
@@ -217,10 +252,14 @@ impl XInterface<'_> {
                 time: x::CURRENT_TIME,
             })?;
 
-        let got_select = self.connection.send_request(&x::GetSelectionOwner {
-            selection: self.atoms.clipboard(),
-        });
-        if self.connection.wait_for_reply(got_select)?.owner() != window {
+        // check if we succeeded in acquiring control of the selection
+        if self
+            .request(&x::GetSelectionOwner {
+                selection: self.atoms.clipboard(),
+            })?
+            .owner()
+            != window
+        {
             panic!("unable to establish window as clipboard owner")
         }
 
@@ -234,25 +273,8 @@ impl XInterface<'_> {
                         break;
                     }
                     x::Event::SelectionRequest(event) => {
-                        if event.target() == image_format {
-                            self.connection.send_and_check_request(&x::ChangeProperty {
-                                mode: x::PropMode::Replace,
-                                window: event.requestor(),
-                                property: event.property(),
-                                r#type: event.target(),
-                                data: img_buf,
-                            })?;
-                            // give up ownership of clipboard by destroying the window, we're done.
-                            // https://tronche.com/gui/x/icccm/sec-2.html
-                            //
-                            // Alternatively, the client may destroy the window
-                            // used as the owner value of the SetSelectionOwner request,
-                            // or the client may terminate. In both cases, the ownership
-                            // of the selection involved will revert to None .
-                            self.connection
-                                .send_and_check_request(&x::DestroyWindow { window })?;
-                            escape = true;
-                        } else if event.target() == self.atoms.targets() {
+                        // targets is used by a caller to see which atoms we support
+                        if event.target() == self.atoms.targets() {
                             self.connection.send_request(&x::ChangeProperty {
                                 mode: x::PropMode::Replace,
                                 window: event.requestor(),
@@ -260,6 +282,27 @@ impl XInterface<'_> {
                                 r#type: x::ATOM_ATOM,
                                 data: &[image_format],
                             });
+                        } else if event.target() == image_format {
+                            self.connection.send_and_check_request(&x::ChangeProperty {
+                                mode: x::PropMode::Replace,
+                                window: event.requestor(),
+                                property: event.property(),
+                                r#type: event.target(),
+                                data: img_buf,
+                            })?;
+                            // give up ownership of clipboard by destroying the window,
+                            // we've sent our data so we're done.
+                            // https://tronche.com/gui/x/icccm/sec-2.html
+                            //
+                            // > Alternatively, the client may destroy the window
+                            // > used as the owner value of the SetSelectionOwner request,
+                            // > or the client may terminate. In both cases, the ownership
+                            // > of the selection involved will revert to None .
+                            self.connection
+                                .send_and_check_request(&x::DestroyWindow { window })?;
+                            // break out of the loop just before we send the last message
+                            // REVIEW: what does the last message actually do
+                            escape = true;
                         }
 
                         self.connection.send_request(&x::SendEvent {
