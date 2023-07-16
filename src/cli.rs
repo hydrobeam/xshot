@@ -4,7 +4,7 @@ use image::ImageOutputFormat;
 #[derive(Parser, Debug)]
 #[command(name = "xsshot")]
 #[command(author = "Laith Bahodi <laithbahodi@gmail.com>")]
-#[command(about = "The XS screenshot tool for X")]
+#[command(about = "The XS screenshot tool for X11")]
 #[command(author, version, about, long_about=None)]
 pub struct Cli {
     /// The window name to target.
