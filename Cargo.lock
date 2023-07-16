@@ -854,7 +854,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "xsshot"
+name = "xshot"
 version = "0.1.0"
 dependencies = [
  "clap",

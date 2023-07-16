@@ -12,13 +12,13 @@ fn main() -> io::Result<()> {
     let mut built = Cli::command();
 
     for &shell in Shell::value_variants() {
-        generate_to(shell, &mut built, "xsshot", &outdir)?;
+        generate_to(shell, &mut built, "xshot", &outdir)?;
     }
 
     let man = clap_mangen::Man::new(built);
     let mut buffer: Vec<u8> = Vec::new();
     man.render(&mut buffer)?;
-    std::fs::write(std::path::PathBuf::from(outdir).join("xsshot.1"), buffer)?;
+    std::fs::write(std::path::PathBuf::from(outdir).join("xshot.1"), buffer)?;
 
     Ok(())
 }

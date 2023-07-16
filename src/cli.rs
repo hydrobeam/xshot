@@ -2,7 +2,7 @@ use clap::{Parser, ValueEnum};
 use image::ImageOutputFormat;
 
 #[derive(Parser, Debug)]
-#[command(name = "xsshot")]
+#[command(name = "xshot")]
 #[command(author = "Laith Bahodi <laithbahodi@gmail.com>")]
 #[command(about = "The XS screenshot tool for X11")]
 #[command(author, version, about, long_about=None)]

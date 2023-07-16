@@ -1,4 +1,4 @@
-# XSshot
+# XShot
 
 The XS screenshot tool for X11!
 
@@ -6,38 +6,46 @@ Grabs screenshots of specific windows (or your whole screen) in the format of yo
 
 ## Install
 
-`xsshot` is available on [`crates.io`](https://example.com)
+`xshot` is available on [`crates.io`](https://example.com)
 
 ```
-cargo install xsshot
+cargo install xshot
+```
+
+### Arch
+
+`xshot` is on the AUR. It will also install the completions for `bash/zsh/fish` & the manpage.
+
+```bash
+yay -S xshot-git
 ```
 
 ## Usage
 
-With no arguments, `xsshot` will simply screenshot your current screen and copy it to your clipboard:
+With no arguments, `xshot` will simply screenshot your current screen and copy it to your clipboard:
 
 ```bash
-xsshot
+xshot
 ```
 
 Takes a screenshot of the window whose name contains "emacs" as a `.jpeg`:
 
 ```bash
-xsshot -n emacs -f jpeg
+xshot -n emacs -f jpeg
 ```
 
-`xsshot` recognizes when it's in a pipe and redirects its output to `stdout` instead of the clipboard:
+`xshot` recognizes when it's in a pipe and redirects its output to `stdout` instead of the clipboard:
 
 ```bash
-xsshot -f bmp -c firefox > "firefox.bmp"
+xshot -f bmp -c firefox > "firefox.bmp"
 ```
 
-#### Output of `xsshot -h`
+#### Output of `xshot -h`
 
 ```man
 The XS screenshot tool for X
 
-Usage: xsshot [OPTIONS]
+Usage: xshot [OPTIONS]
 
 Options:
   -n, --name <NAME>                     The window name to target
@@ -59,5 +67,5 @@ Options:
 
 Take your pick:
 
-- Extra Small {XS} Screen(SHOT) => `xsshot`
-- (XS)erver Screen(SHOT) => `xsshot`
+- Extra Small {XS} Screen(SHOT) => `xshot`
+- (XS)erver Screen(SHOT) => `xshot`
