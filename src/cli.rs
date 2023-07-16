@@ -47,9 +47,11 @@ pub struct Cli {
     #[arg(short, long, value_enum, default_value = "jpeg")]
     pub format: OutputFormat,
 
-    /// How long to wait before capturing the screenshot
+    /// How long to wait before capturing the screenshot, in seconds.
+    ///
+    /// Accepts a float: `--delay 4.5` will wait 4.5 seconds.
     #[arg(short, long)]
-    pub delay: Option<f32>,
+    pub delay: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

@@ -115,6 +115,7 @@ impl<'a> XInterface<'a> {
         window_name: Option<WindowTarget>,
         position: Vec<i16>,
         size: Option<Vec<u16>>,
+        delay: Option<f64>,
     ) -> Result<RgbaImage> {
         let wid = if let Some(name) = window_name {
             self.find_window_class(name)?
@@ -127,6 +128,12 @@ impl<'a> XInterface<'a> {
         } else {
             self.calc_geometry(wid)?
         };
+
+        if let Some(delay) = delay {
+            let time = std::time::Duration::from_secs_f64(delay);
+            eprintln!("Waiting {} seconds", time.as_secs_f64());
+            std::thread::sleep(time)
+        }
 
         let window_image = self.request(&xcb::x::GetImage {
             format: x::ImageFormat::ZPixmap,
@@ -147,6 +154,7 @@ impl<'a> XInterface<'a> {
             pixels.push(chunk[0]); // B
             pixels.push(0xff); // A (actually chunk[3], but it's always 0)
         }
+
         Ok(
             image::RgbaImage::from_raw(size[0].into(), size[1].into(), pixels)
                 .expect("failed image conversion"),

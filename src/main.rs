@@ -26,7 +26,7 @@ fn main() -> xcb::Result<()> {
     let (conn, screen_num) = xcb::Connection::connect(None)?;
     let x_handle = XInterface::new(&conn, screen_num as usize);
 
-    let ret_img: RgbaImage = x_handle.establish_image(window_query, cli.position, cli.size)?;
+    let ret_img: RgbaImage = x_handle.establish_image(window_query, cli.position, cli.size, cli.delay)?;
 
     let mut cursor = Cursor::new(Vec::new());
     ret_img.write_to(&mut cursor, cli.format).unwrap();
